@@ -1,10 +1,4 @@
 pipeline {
-    agent any
-
-    tools {
-        maven 'Maven'
-    }
-
     environment {
         DOCKER_HUB_CREDENTIALS = credentials('akhpng31') // Update with your Docker Hub credentials ID
         GIT_REPO = 'https://github.com/nagkarthi07/SWE645-HW3.git' // Update with your GitHub repository URL
