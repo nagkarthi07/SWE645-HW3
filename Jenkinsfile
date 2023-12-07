@@ -1,6 +1,6 @@
 pipeline {
     agent any
-    tools{
+    tools {
         maven 'Maven'
     }
     environment {
@@ -9,9 +9,8 @@ pipeline {
         DOCKER_IMAGE_NAME = 'akhpng31/survey4'
         TIMESTAMP = new Date().format('yyyyMMdd-HHmmss')
         KUBE_CONFIG = 'kubeconfig'
-        
     }
-    
+
     stages {
         stage('Clone Repository and Build JAR') {
             steps {
@@ -22,19 +21,23 @@ pipeline {
                 }
             }
         }
-    
-            stage('Build Docker Image') {
-                steps {
-                    script {
-                        // Build and tag the Docker image
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    try {
+                        // Build and tag the Docker image using BuildKit
                         def dockerImage = "${DOCKER_IMAGE_NAME}:${TIMESTAMP}"
-                        sh "docker build -t ${dockerImage} ."
-                       
-                        }
+                        sh "DOCKER_BUILDKIT=1 docker build --progress=plain -t ${dockerImage} ."
+                    } catch (Exception buildError) {
+                        // Handle build error
+                        currentBuild.result = 'FAILURE'
+                        error "Failed to build Docker image: ${buildError}"
                     }
                 }
+            }
+        }
 
-            
         stage('Push Docker Image to Docker Hub') {
             steps {
                 script {
@@ -45,23 +48,31 @@ pipeline {
 
                     // Push the Docker image to Docker Hub
                     sh "docker push ${dockerImage}"
-
-                    }
                 }
             }
-        
+        }
 
         stage('Update Kubernetes Deployments') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: "$KUBE_CONFIG", variable: 'KUBECONFIG')]) {
-                        sh "kubectl set image deployment/spring-boot-deployment spring-boot-container=${DOCKER_IMAGE_NAME}:${TIMESTAMP} --all"
+                    try {
+                        withCredentials([file(credentialsId: "$KUBE_CONFIG", variable: 'KUBECONFIG')]) {
+                            def deploymentName = 'pls'
+                            def containerName = 'ydly'
+                            def newImage = "${DOCKER_IMAGE_NAME}:${TIMESTAMP}"
+
+                            sh "kubectl set image deployment/${deploymentName} ${containerName}=${newImage} --all"
+                        }
+                    } catch (Exception deploymentError) {
+                        // Handle deployment error
+                        currentBuild.result = 'FAILURE'
+                        error "Failed to update Kubernetes deployment: ${deploymentError}"
                     }
                 }
             }
         }
     }
-    
+
     post {
         success {
             echo 'Jenkins Pipeline executed successfully!'
