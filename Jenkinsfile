@@ -17,7 +17,7 @@ pipeline {
                 echo 'Building the JAR ...'
                 sh 'java -version'
                 sh 'cp target/HW3-0.0.1-SNAPSHOT.jar .'  
-                sh 'docker login -u akhpng31 -p ${DOCKERHUB_PASS}'
+                sh 'docker login -u akhpng31 -p akhpngubuntu'
                 sh 'docker build -t akhpng31/survey4 .'
             }
         }
