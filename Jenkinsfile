@@ -18,6 +18,7 @@ pipeline {
                 script {
                     git url: GIT_REPO
                     sh 'mvn clean package'
+                    sh 'cp target/HW3-0.0.1-SNAPSHOT.jar ${WORKSPACE}/app.jar'
                 }
             }
         }
