@@ -1,67 +1,37 @@
 pipeline {
     agent any
-    tools{
-        maven 'Maven'
-    }
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('akhpng31') // Update with your Docker Hub credentials ID
-        GIT_REPO = 'https://github.com/nagkarthi07/SWE645-HW3.git' // Update with your GitHub repository URL
-        DOCKER_IMAGE_NAME = 'akhpng31/survey4'
-        TIMESTAMP = new Date().format('yyyyMMdd-HHmmss')
-        KUBE_CONFIG = 'kubeconfig'
+        PROJECT_ID = 'rancher'
+        CLUSTER_NAME = 'ydly'
+        LOCATION = 'us-east-1a'
+        DOCKERHUB_PASS = 'akhpngubuntu'
     }
-
     stages {
-        stage('Clone Repository and Build JAR') {
+        stage("Checkout code") {
+            steps {
+                checkout scm
+            }
+        }
+        stage('BuildJAR') {
+            steps {
+                echo 'Building the JAR ...'
+                sh 'java -version'
+                sh 'cp target/HW3-0.0.1-SNAPSHOT.jar .'  
+                sh 'docker login -u akhpng31 -p ${DOCKERHUB_PASS}'
+                sh 'docker build -t akhpng31/survey4 .'
+            }
+        }
+        stage("Pushing image to docker") {
             steps {
                 script {
-                    git url: GIT_REPO
-                    sh 'mvn clean package'
+                    sh 'docker push akhpng31/survey4'
                 }
             }
         }
-
-        stage('Build Docker Image') {
+        stage("UpdateDeployment") {
             steps {
-                script {
-                    // Build and tag the Docker image
-                    def dockerImage = "${DOCKER_IMAGE_NAME}:${TIMESTAMP}"
-                    sh "docker build -t ${dockerImage} ."
-                }
+                sh 'kubectl rollout restart deploy pls'
             }
-        }
-
-        stage('Push Docker Image to Docker Hub') {
-            steps {
-                script {
-                    def dockerImage = "${DOCKER_IMAGE_NAME}:${TIMESTAMP}"
-
-                    // Docker login
-                    sh "docker login -u akhpng31 -p akhpngubuntu"
-
-                    // Push the Docker image to Docker Hub
-                    sh "docker push ${dockerImage}"
-                }
-            }
-        }
-
-        stage('Update Kubernetes Deployments') {
-            steps {
-                script {
-                    withCredentials([file(credentialsId: "$KUBE_CONFIG", variable: 'KUBECONFIG')]) {
-                        sh "kubectl set image deployment/spring-boot-deployment spring-boot-container=${DOCKER_IMAGE_NAME}:${TIMESTAMP} --all"
-                    }
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo 'Jenkins Pipeline executed successfully!'
-        }
-        failure {
-            echo 'Jenkins Pipeline failed!'
         }
     }
 }
